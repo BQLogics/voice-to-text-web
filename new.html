@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
+  </head>
+  <body>
+    <p id="status">Not Connected</p>
+    <form>
+      <input type="text" id="transcript" name="name">
+      <br><br>
+      <button type="button" id="stopBtn">Stop</button>
+      <button type="button" id="clearBtn">Clear</button>
+    </form>
+
+    <script>
+      let mediaRecorder;
+      let socket;
+
+      // Start voice recognition automatically when the page loads
+      window.onload = function () {
+        navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+          console.log({ stream });
+
+          if (!MediaRecorder.isTypeSupported('audio/webm'))
+            return alert('Browser not supported');
+          
+          mediaRecorder = new MediaRecorder(stream, {
+            mimeType: 'audio/webm',
+          });
+
+          socket = new WebSocket('wss://api.deepgram.com/v1/listen', [
+            'token',
+            'e07d8afc4521ad1e42dcdc97b41643d6f3c54405',
+          ]);
+
+          socket.onopen = () => {
+            document.querySelector('#status').textContent = 'Connected';
+            console.log({ event: 'onopen' });
+
+            mediaRecorder.addEventListener('dataavailable', (event) => {
+              if (event.data.size > 0 && socket.readyState == 1) {
+                socket.send(event.data);
+              }
+            });
+
+            mediaRecorder.start(1000);
+          };
+
+          socket.onmessage = (message) => {
+            const received = JSON.parse(message.data);
+            const transcript = received.channel.alternatives[0].transcript;
+            if (transcript && received.is_final) {
+              console.log(transcript);
+              document.querySelector('#transcript').value += transcript + ' ';
+            }
+          };
+
+          socket.onclose = () => {
+            console.log({ event: 'onclose' });
+            document.querySelector('#status').textContent = 'Disconnected';
+          };
+
+          socket.onerror = (error) => {
+            console.log({ event: 'onerror', error });
+          };
+        });
+      };
+
+      // Function to stop voice recognition
+      function stopVoiceRecognition() {
+        if (mediaRecorder) {
+          mediaRecorder.stop();
+          socket.close();
+          document.querySelector('#status').textContent = 'Stopped';
+        }
+      }
+
+      // Function to clear the transcript text box
+      function clearTranscript() {
+        document.querySelector('#transcript').value = '';
+      }
+
+      // Add event listeners to buttons
+      document.getElementById('stopBtn').addEventListener('click', stopVoiceRecognition);
+      document.getElementById('clearBtn').addEventListener('click', clearTranscript);
+    </script>
+  </body>
+</html>

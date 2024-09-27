@@ -5,7 +5,13 @@
   </head>
   <body>
     <p id="status">Not Connected</p>
-    <p id="transcript"></p>
+      <!-- <p id="transcript"></p> -->
+    <form>
+     
+      <input type="text" id="transcript" name="name">
+      <br><br>
+    
+    </form>
     <script>
       navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
         console.log({ stream })
